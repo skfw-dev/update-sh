@@ -1,0 +1,17 @@
+# build-sh (coming soon)
+name: update-sh
+author: 'Ahmad Asy Syafiq'
+description: 'Update-SH: Cross-Platform System Update Manager'
+repo_url: https://github.com/skfw-dev/update-sh.git
+license: Apache 2.0
+version: 0.0.0
+workdir: .
+out_dir: bin
+on_before:
+  - run: go get -u -v -f all
+  - run: go mod tidy
+on_after:
+  - run: go build -o bin/update-sh-{arch}-{platform}{ext}
+dependencies:
+  - dep: core-sh:1.2 # echo, touch, mkdir, awk, grep, tee, sed (coming soon)
+  - dep: golang:1.24.5 # go, golint, gotest

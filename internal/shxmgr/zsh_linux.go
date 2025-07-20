@@ -73,16 +73,6 @@ func (z *ZshManager) Update(dryRun bool) error {
 		log.Debug().Msgf("Powerlevel10k not found at %s. Skipping Powerlevel10k update.", powerlevel10kPath)
 	}
 
-	// Update Oh My Posh CLI (can be cross-platform, but often installed via package managers or specific scripts)
-	if runner.CommandExists("oh-my-posh") {
-		log.Info().Msg("Found Oh My Posh CLI. Attempting to upgrade...")
-		if err := runner.RunCommand("Upgrade Oh My Posh CLI", dryRun, "oh-my-posh", nil, "upgrade", "--force"); err != nil {
-			log.Error().Err(err).Msg("Failed to upgrade Oh My Posh CLI.")
-			return fmt.Errorf("failed to upgrade Oh My Posh CLI: %w", err)
-		}
-	} else {
-		log.Debug().Msg("Oh My Posh CLI not found. Skipping Oh My Posh CLI update.")
-	}
 	log.Info().Msg("Zsh components update complete.")
 	return nil
 }

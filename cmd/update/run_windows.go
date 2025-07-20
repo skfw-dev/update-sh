@@ -151,9 +151,9 @@ func performMaintenance(dryRun, initCheckOnly, zshUpdateEnabled, pwshUpdateEnabl
 	}
 
 	// Execute all collected shell managers
-	for _, sm := range shlexManagersToRun {
-		if err := sm.Update(dryRun); err != nil {
-			log.Error().Err(err).Msgf("Shell component update failed for %T.", sm)
+	for _, shlexManager := range shlexManagersToRun {
+		if err := shlexManager.Update(dryRun); err != nil {
+			log.Error().Err(err).Msgf("Shell component update failed for %T.", shlexManager)
 		}
 	}
 

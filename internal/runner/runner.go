@@ -3,16 +3,14 @@ package runner
 import (
 	"bufio"
 	"fmt"
-	"io"
-	"os/exec"
-	"strconv"
-	"strings"
-	"update-sh/internal/logger"
-
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
+	"io"
+	"os/exec"
+	"strconv"
+	"strings"
 )
 
 type Encoding int
@@ -172,7 +170,7 @@ func streamOutput(r io.Reader, transformer transform.Transformer, level func() *
 
 			warnMsg := "WARNING: apt does not have a stable CLI interface. Use with caution in scripts."
 			if strings.EqualFold(content, warnMsg) {
-				logger.Warn("Skipping specific warning message: %s", warnMsg)
+				log.Warn().Msgf("Skipping specific warning message: %s", warnMsg)
 				continue // Skip specific warning message
 			}
 

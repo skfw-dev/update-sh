@@ -18,11 +18,11 @@ import (
 
 func RunUserCommandWithOptions(opts *CommandOptions) error {
 	if opts.DryRun {
-		log.Info().Msgf("Dry Run: Would execute '%s' as user '%s': %s %v", opts.Description, opts.Name, opts.Args)
+		log.Info().Msgf("Dry Run: Would execute '%s' as user '%s': %s %v", opts.Description, opts.User, opts.Name, opts.Args)
 		return nil
 	}
 
-	log.Info().Msgf("%s (as user %s)...", opts.Description, opts.Name)
+	log.Info().Msgf("%s (as user %s)...", opts.Description, opts.User)
 
 	// Construct the command to run via sudo -u
 	sudoArgs := []string{"-u", opts.Name}

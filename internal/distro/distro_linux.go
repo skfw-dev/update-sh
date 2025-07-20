@@ -90,7 +90,7 @@ func DetectDistro() (*Distribution, error) {
 
 			scanner := bufio.NewScanner(file)
 			for scanner.Scan() {
-				line := scanner.Text()
+				line := strings.TrimSpace(scanner.Text())
 				if strings.HasPrefix(line, "ID=") {
 					dist.ID = strings.Trim(strings.ToLower(strings.TrimPrefix(line, "ID=")), `"`)
 				} else if strings.HasPrefix(line, "ID_LIKE=") {
@@ -150,7 +150,7 @@ func DetectDistro() (*Distribution, error) {
 		dist.Family = "bsd"
 		dist.PrimaryPackageManager = "pkg_add"
 	case strings.Contains(dist.IDLike, "bsd"): // Although BSD, treat as a "distro" for this tool's purposes
-		dist.ID = "bsd" // Generic BSD
+		dist.ID = "bsd"
 		dist.Family = "bsd"
 		dist.PrimaryPackageManager = "generic_bsd_pkg"
 	default:

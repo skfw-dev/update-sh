@@ -4,7 +4,7 @@
 [![GitHub release](https://img.shields.io/github/v/release/skfw-dev/update-sh)](https://github.com/skfw-dev/update-sh/releases)
 [![License: Apache 2.0](https://img.shields.io/github/license/skfw-dev/update-sh)](https://github.com/skfw-dev/update-sh/blob/main/LICENSE)
 [![Go Reference](https://pkg.go.dev/badge/github.com/skfw-dev/update-sh.svg)](https://pkg.go.dev/github.com/skfw-dev/update-sh)
-[![Build Status](https://github.com/skfw-dev/update-sh/actions/workflows/build.yml/badge.svg)](https://github.com/skfw-dev/update-sh/actions)
+[![Build Status](https://github.com/skfw-dev/update-sh/actions/workflows/go.yml/badge.svg)](https://github.com/skfw-dev/update-sh/actions)
 [![Codecov](https://codecov.io/gh/skfw-dev/update-sh/branch/main/graph/badge.svg)](https://codecov.io/gh/skfw-dev/update-sh)
 
 A powerful command-line tool that simplifies system maintenance by managing updates across multiple package managers on both Linux and Windows platforms.

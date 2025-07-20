@@ -1,13 +1,9 @@
 package shxmgr
 
 import (
-	// Needed for fmt.Errorf
-	// Needed for strings.TrimSpace
-
-	"update-sh/internal/runner"
-
+	"fmt"
 	"github.com/rs/zerolog/log"
-	// Assuming version package is imported for GetPowerShellExecutable
+	"update-sh/internal/runner"
 )
 
 // PwshManager implements ShlexManagerImpl for PowerShell.
@@ -67,6 +63,18 @@ func (p *PwshManager) Update(dryRun bool) error {
 	default:
 		log.Info().Msg("No primary or configured common package manager found to update PowerShell automatically.")
 		log.Info().Msg("Consider downloading the latest package from: https://aka.ms/powershell-release?tag=stable")
+	}
+
+	// Update Oh My Posh CLI (can be cross-platform, but often installed via package managers or specific scripts)
+	if runner.CommandExists("oh-my-posh") {
+		log.Info().Msg("Found Oh My Posh CLI. Attempting to upgrade...")
+		ompArgs := []string{"upgrade", "--force"}
+		if err := runner.RunCommand("Upgrade Oh My Posh CLI", dryRun, "oh-my-posh", nil, ompArgs...); err != nil {
+			log.Error().Err(err).Msg("Failed to upgrade Oh My Posh CLI.")
+			return fmt.Errorf("failed to upgrade Oh My Posh CLI: %w", err)
+		}
+	} else {
+		log.Debug().Msg("Oh My Posh CLI not found. Skipping Oh My Posh CLI update.")
 	}
 
 	log.Info().Msg("PowerShell update complete.")

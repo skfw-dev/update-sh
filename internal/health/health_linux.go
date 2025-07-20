@@ -41,10 +41,11 @@ func (l *LinuxHealthManager) checkFailedSystemdUnitsSystem(dryRun bool) {
 		return
 	}
 
-	cmd := exec.Command("systemctl", "list-units", "--system", "--failed", "--no-pager", "--no-legend")
+	args := []string{"list-units", "--system", "--failed", "--no-pager", "--no-legend"}
+	cmd := exec.Command("systemctl", args...)
 	output, err := cmd.Output()
 	if err != nil {
-		if len(output) == 0 && err.Error() == "exit status 1" {
+		if len(output) == 0 && strings.Contains(err.Error(), "exit status 1") {
 			log.Info().Msg("No failed system-scope units found.")
 			return
 		}
@@ -52,12 +53,16 @@ func (l *LinuxHealthManager) checkFailedSystemdUnitsSystem(dryRun bool) {
 		return
 	}
 
-	failedUnits := strings.TrimSpace(string(output))
-	if failedUnits != "" {
-		log.Info().Msg("Found failed system-scope units:")
-		log.Info().Msg(failedUnits)
-	} else {
-		log.Info().Msg("No failed system-scope units found.")
+	log.Info().Msg("Found failed system-scope units:")
+	content := strings.TrimSpace(string(output))
+	lines := strings.SplitSeq(content, "\n")
+	for line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		log.Info().Msg(line)
 	}
 }
 
@@ -82,10 +87,9 @@ func (l *LinuxHealthManager) checkFailedSystemdUnitsUser(dryRun bool) {
 
 	log.Info().Msgf("Attempting to check user-scope systemd units for user: %s", user)
 
-	var failedUnitsUser string
-
 	// Attempt to get the DBUS_SESSION_BUS_ADDRESS and XDG_RUNTIME_DIR for the user.
-	cmd := exec.Command("sudo", "-u", user, "env")
+	args := []string{"-u", user, "env"}
+	cmd := exec.Command("sudo", args...)
 	output, err := cmd.Output()
 	if err != nil {
 		log.Warn().Err(err).Msgf("Could not retrieve user environment for %s. Proceeding with common user session paths.", user)
@@ -97,42 +101,51 @@ func (l *LinuxHealthManager) checkFailedSystemdUnitsUser(dryRun bool) {
 		line := scanner.Text()
 		parts := strings.SplitN(line, "=", 2)
 		if len(parts) == 2 {
-			userEnv[parts[0]] = parts[1]
+			key, value := parts[0], parts[1]
+			userEnv[key] = value
 		}
 	}
 
 	dbusSessionBusAddress := userEnv["DBUS_SESSION_BUS_ADDRESS"]
 	xdgRuntimeDir := userEnv["XDG_RUNTIME_DIR"]
 
-	if dbusSessionBusAddress != "" && xdgRuntimeDir != "" {
-		log.Debug().Msgf("Using retrieved DBus environment for user %s.", user)
-		cmd = exec.Command("sudo", "-u", user, "systemctl", "--user", "list-units", "--failed", "--no-pager", "--no-legend")
-		cmd.Env = append(cmd.Env, "DBUS_SESSION_BUS_ADDRESS="+dbusSessionBusAddress)
-		cmd.Env = append(cmd.Env, "XDG_RUNTIME_DIR="+xdgRuntimeDir)
-		output, err = cmd.Output()
-		if err == nil {
-			failedUnitsUser = strings.TrimSpace(string(output))
-		}
-	} else {
-		log.Info().Msg("Warning: Could not retrieve DBUS_SESSION_BUS_ADDRESS or XDG_RUNTIME_DIR for user directly. Attempting with dbus-launch.")
+	log.Debug().Msgf("Using retrieved DBus environment for user %s.", user)
 
-		cmd = exec.Command("sudo", "-u", user, "dbus-launch", "systemctl", "--user", "list-units", "--failed", "--no-pager", "--no-legend")
-		output, err = cmd.Output()
-		if err == nil {
-			failedUnitsUser = strings.TrimSpace(string(output))
-		}
+	// Build the command to run via sudo -u
+	args = []string{"-u", user, "dbus-launch", "systemctl", "--user", "list-units", "--failed", "--no-pager", "--no-legend"}
+	cmd = exec.Command("sudo", args...)
+
+	// Apply the retrieved environment variables to the command
+	if dbusSessionBusAddress != "" {
+		cmd.Env = append(cmd.Env, "DBUS_SESSION_BUS_ADDRESS="+dbusSessionBusAddress)
 	}
 
-	if err != nil && !strings.Contains(err.Error(), "exit status 1") {
-		log.Error().Err(err).Msgf("Failed to check user-scope systemd units for %s. Output:\n%s", user, strings.TrimSpace(string(output)))
+	// Apply the retrieved environment variables to the command
+	if xdgRuntimeDir != "" {
+		cmd.Env = append(cmd.Env, "XDG_RUNTIME_DIR="+xdgRuntimeDir)
+	}
+
+	// Received output and error from the command
+	output, err = cmd.Output()
+	if err != nil {
+		if len(output) == 0 && strings.Contains(err.Error(), "exit status 1") {
+			log.Info().Msg("No failed user-scope units found.")
+			return
+		}
+		log.Error().Err(err).Msgf("Failed to check user-scope systemd units. Output:\n%s", strings.TrimSpace(string(output)))
 		return
 	}
 
-	if failedUnitsUser != "" {
-		log.Info().Msgf("Found failed user-scope units for %s:", user)
-		log.Info().Msg(failedUnitsUser)
-	} else {
-		log.Info().Msgf("No failed user-scope units found for %s (or could not connect to user D-Bus session).", user)
+	log.Info().Msgf("Found failed user-scope units for %s:", user)
+	content := strings.TrimSpace(string(output))
+	lines := strings.SplitSeq(content, "\n")
+	for line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		log.Info().Msg(line)
 	}
 }
 
@@ -149,7 +162,10 @@ func (l *LinuxHealthManager) checkSystemInit(dryRun bool) {
 	} else if runner.CommandExists("initctl") {
 		cmd := exec.Command("initctl", "--version")
 		output, err := cmd.Output()
-		if err == nil && strings.Contains(string(output), "Upstart") {
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to check initctl version.")
+		}
+		if strings.Contains(string(output), "Upstart") {
 			initSystem = "Upstart"
 			log.Info().Msg("Detected init system: Upstart.")
 			log.Info().Msg("Upstart does not have a direct equivalent to 'list failed units' like systemd.")
