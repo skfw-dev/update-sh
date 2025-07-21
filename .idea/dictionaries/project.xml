@@ -10,7 +10,10 @@
       <w>linuxmint</w>
       <w>noconfirm</w>
       <w>printenv</w>
+      <w>pwsh</w>
       <w>scannow</w>
+      <w>shlex</w>
+      <w>zerolog</w>
     </words>
   </dictionary>
 </component>

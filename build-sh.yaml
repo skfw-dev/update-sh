@@ -8,7 +8,7 @@ version: 0.0.0
 workdir: .
 out_dir: bin
 on_before:
-  - run: go get -u -v -f all
+  - run: go get -u all
   - run: go mod tidy
 on_after:
   - run: go build -o bin/update-sh-{arch}-{platform}{ext}

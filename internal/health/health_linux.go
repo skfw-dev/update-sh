@@ -98,10 +98,10 @@ func (l *LinuxHealthManager) checkFailedSystemdUnitsUser(dryRun bool) {
 	userEnv := make(map[string]string)
 	scanner := bufio.NewScanner(strings.NewReader(string(output)))
 	for scanner.Scan() {
-		line := scanner.Text()
+		line := strings.TrimSpace(scanner.Text())
 		parts := strings.SplitN(line, "=", 2)
 		if len(parts) == 2 {
-			key, value := parts[0], parts[1]
+			key, value := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
 			userEnv[key] = value
 		}
 	}

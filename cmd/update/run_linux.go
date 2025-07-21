@@ -89,26 +89,26 @@ func acquireRoot() {
 
 // performLinuxPackageUpdates runs all Linux-specific package manager updates.
 func performLinuxPackageUpdates(dryRun bool, primaryPkgManager string) {
-	var managersToRun []pkgmgr.PackageManagerImpl
+	var packageManagersToRun []pkgmgr.PackageManagerImpl
 
 	// Prioritize based on detected primary package manager.
 	switch primaryPkgManager {
 	case "apt":
-		managersToRun = append(managersToRun, &pkgmgr.APTManager{})
+		packageManagersToRun = append(packageManagersToRun, &pkgmgr.APTManager{})
 	case "dnf":
-		managersToRun = append(managersToRun, &pkgmgr.DNFManager{})
+		packageManagersToRun = append(packageManagersToRun, &pkgmgr.DNFManager{})
 	case "pacman":
-		managersToRun = append(managersToRun, &pkgmgr.PacmanManager{})
+		packageManagersToRun = append(packageManagersToRun, &pkgmgr.PacmanManager{})
 	case "zypper":
-		managersToRun = append(managersToRun, &pkgmgr.ZypperManager{})
+		packageManagersToRun = append(packageManagersToRun, &pkgmgr.ZypperManager{})
 	case "pkg", "pkg_add", "generic_bsd_pkg": // Handle BSD package managers for Linux builds (e.g., WSL)
-		managersToRun = append(managersToRun, &pkgmgr.BSDManager{})
+		packageManagersToRun = append(packageManagersToRun, &pkgmgr.BSDManager{})
 	default:
 		// If the primary package manager isn't definitively detected,
 		// attempt to run common Linux package managers. Each manager will
 		// internally check if its corresponding command exists.
 		log.Info().Msg("Primary Linux package manager not definitively detected. Attempting common Linux package managers.")
-		managersToRun = append(managersToRun,
+		packageManagersToRun = append(packageManagersToRun,
 			&pkgmgr.APTManager{},
 			&pkgmgr.DNFManager{},
 			&pkgmgr.PacmanManager{},
@@ -120,13 +120,13 @@ func performLinuxPackageUpdates(dryRun bool, primaryPkgManager string) {
 	// Snap and Flatpak are universal Linux package managers (cross-distro),
 	// so always attempt to run their updates if their commands exist.
 	// Their implementations (e.g., `pkgmgr/snap_linux.go`) already have the `_linux.go` tag.
-	managersToRun = append(managersToRun, &pkgmgr.SnapManager{}, &pkgmgr.FlatpakManager{})
+	packageManagersToRun = append(packageManagersToRun, &pkgmgr.SnapManager{}, &pkgmgr.FlatpakManager{})
 
 	// Execute all collected package managers.
-	for _, pm := range managersToRun {
-		if err := pm.Update(dryRun); err != nil {
+	for _, packageManager := range packageManagersToRun {
+		if err := packageManager.Update(dryRun); err != nil {
 			// Log an error if a specific package manager update fails.
-			log.Error().Err(err).Msgf("Linux package manager update failed for %T.", pm)
+			log.Error().Err(err).Msgf("Linux package manager update failed for %T.", packageManager)
 		}
 	}
 }

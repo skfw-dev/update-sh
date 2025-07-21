@@ -2,12 +2,14 @@ package runner
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
 	"io"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -164,12 +166,21 @@ func streamOutput(r io.Reader, transformer transform.Transformer, level func() *
 		lines := strings.SplitSeq(content, "\n")
 		for line := range lines {
 			line = strings.TrimSpace(line)
+
+			// maybe
+			temp := line
+
+			// remove loading ASCII animation...
+			if line = strings.Trim(line, "-\\|/\r "); line != "" {
+				line = temp // restore data output
+			}
+
 			if line == "" {
-				continue // Skip empty lines
+				continue // Skip empty string
 			}
 
 			warnMsg := "WARNING: apt does not have a stable CLI interface. Use with caution in scripts."
-			if strings.EqualFold(content, warnMsg) {
+			if strings.EqualFold(line, warnMsg) {
 				log.Warn().Msgf("Skipping specific warning message: %s", warnMsg)
 				continue // Skip specific warning message
 			}
@@ -177,15 +188,17 @@ func streamOutput(r io.Reader, transformer transform.Transformer, level func() *
 			// Log the line with the appropriate level and tag
 			prefix := tagFunc()
 			if prefix != "" {
-				level().Msgf("%s %s", prefix, content)
+				level().Msgf("%s %s", prefix, line)
 			} else {
-				level().Msg(content)
+				level().Msg(line)
 			}
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Error().Err(err).Msg("error streaming command output")
+		if !errors.Is(err, os.ErrClosed) && !errors.Is(err, io.EOF) {
+			log.Error().Err(err).Msg("error streaming command output")
+		}
 	}
 }
 

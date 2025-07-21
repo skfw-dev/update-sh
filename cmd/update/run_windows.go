@@ -91,20 +91,20 @@ func acquireRoot() {
 
 // performWindowsPackageUpdates runs all Windows-specific package manager updates.
 func performWindowsPackageUpdates(dryRun bool) {
-	var managersToRun []pkgmgr.PackageManagerImpl
+	var packageManagersToRun []pkgmgr.PackageManagerImpl
 
 	// Add Windows-specific package managers.
 	// These managers will internally check if their respective commands (winget, choco) exist.
-	managersToRun = append(managersToRun, &pkgmgr.WinGetManager{})
-	managersToRun = append(managersToRun, &pkgmgr.ChocolateyManager{})
-	managersToRun = append(managersToRun, &pkgmgr.ScoopManager{})
+	packageManagersToRun = append(packageManagersToRun, &pkgmgr.WinGetManager{})
+	packageManagersToRun = append(packageManagersToRun, &pkgmgr.ChocolateyManager{})
+	packageManagersToRun = append(packageManagersToRun, &pkgmgr.ScoopManager{})
 
 	// Execute all collected package managers.
-	for _, pm := range managersToRun {
-		if err := pm.Update(dryRun); err != nil {
+	for _, packageManager := range packageManagersToRun {
+		if err := packageManager.Update(dryRun); err != nil {
 			// Log an error if a specific package manager update fails.
 			// %T prints the type of the manager (e.g., *pkgmgr.WinGetManager).
-			log.Error().Err(err).Msgf("Windows package manager update failed for %T.", pm)
+			log.Error().Err(err).Msgf("Windows package manager update failed for %T.", packageManager)
 		}
 	}
 }
