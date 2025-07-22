@@ -40,8 +40,8 @@ func (p *PwshManager) Update(dryRun bool) error {
 	case "winget":
 		// Winget command structure: winget upgrade <package_id>
 		wingetArgs := []string{"upgrade", "Microsoft.PowerShell", "--silent", "--accept-package-agreements", "--accept-source-agreements"}
-		if err := runner.RunCommand("Update PowerShell (Winget)", dryRun, "winget", nil, wingetArgs...); err != nil {
-			log.Error().Err(err).Msg("Failed to update PowerShell via Winget.")
+		if err := runner.RunCommand("Update PowerShell (WinGet)", dryRun, "winget", nil, wingetArgs...); err != nil {
+			log.Error().Err(err).Msg("Failed to update PowerShell via WinGet.")
 			return err
 		}
 	case "chocolatey":
