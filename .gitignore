@@ -32,3 +32,6 @@ go.work.sum
 bin/
 out/
 tmp/
+
+# Logging files
+*.log
