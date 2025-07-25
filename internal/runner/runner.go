@@ -165,33 +165,21 @@ func streamOutput(r io.Reader, transformer transform.Transformer, level func() *
 		// Content more than one line, multiple lines
 		lines := strings.SplitSeq(content, "\n")
 		for line := range lines {
-			line = strings.TrimSpace(line)
 
-			// maybe
-			temp := line
-
-			// remove loading ASCII animation...
-			if line = strings.Trim(line, "-\\|/\r "); line != "" {
-				line = temp // restore data output
+			// Skip empty string
+			if line = strings.TrimSpace(line); line == "" {
+				continue
 			}
 
-			if line == "" {
-				continue // Skip empty string
-			}
-
+			// Skip specific warning message
 			warnMsg := "WARNING: apt does not have a stable CLI interface. Use with caution in scripts."
 			if strings.EqualFold(line, warnMsg) {
-				log.Warn().Msgf("Skipping specific warning message: %s", warnMsg)
-				continue // Skip specific warning message
+				//log.Warn().Msgf("Skipping specific warning message: %s", strconv.Quote(warnMsg))
+				continue
 			}
 
-			// Log the line with the appropriate level and tag
-			prefix := tagFunc()
-			if prefix != "" {
-				level().Msgf("%s %s", prefix, line)
-			} else {
-				level().Msg(line)
-			}
+			// Render output
+			renderOutput(line, level, tagFunc)
 		}
 	}
 
@@ -200,6 +188,41 @@ func streamOutput(r io.Reader, transformer transform.Transformer, level func() *
 			log.Error().Err(err).Msg("error streaming command output")
 		}
 	}
+}
+
+func renderOutput(content string, level func() *zerolog.Event, tagFunc func() string) {
+	var prefix string
+	if tagFunc != nil {
+		prefix = tagFunc()
+	}
+
+	if prefix != "" {
+		if strings.Contains(content, "\r") {
+			values := strings.SplitSeq(content, "\r")
+
+			// Handle re-rendering
+			for value := range values {
+
+				// Skip empty string
+				if value = strings.TrimSpace(value); value == "" {
+					continue
+				}
+
+				// FIXME: "- \r   \\ \r   | \r   / \r   - \r   \\ \r   | \r   / \r   - \r"
+
+				// Pass through with prefix
+				level().Msgf("%s %s", prefix, value)
+			}
+			return
+		}
+
+		// Pass through with prefix
+		level().Msgf("%s %s", prefix, content)
+		return
+	}
+
+	// Pass through
+	level().Msg(content)
 }
 
 // CommandExists checks if a command exists in the PATH.
