@@ -2,17 +2,19 @@ package runner
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-	"golang.org/x/text/encoding/unicode"
-	"golang.org/x/text/transform"
 	"io"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/text/encoding/unicode"
+	"golang.org/x/text/transform"
 )
 
 type Encoding int
@@ -149,43 +151,49 @@ func streamAndWait(cmd *exec.Cmd, transformer transform.Transformer, description
 
 // streamOutput pipes output line-by-line to specified logger level
 func streamOutput(r io.Reader, transformer transform.Transformer, level func() *zerolog.Event, tagFunc func() string) {
-	// Use a transformer if specified, otherwise read directly
+	// Use a transformer if specified
 	if transformer != nil {
 		r = transform.NewReader(r, transformer)
 	}
 
-	// Use a scanner to read the output line-by-line
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		content := strings.TrimSpace(scanner.Text())
-		if content == "" {
-			continue // Skip empty content
-		}
+	// Use a bufio.Reader for efficient, byte-level reading
+	reader := bufio.NewReader(r)
 
-		// Content more than one line, multiple lines
-		lines := strings.SplitSeq(content, "\n")
-		for line := range lines {
+	// Use a bytes.Buffer to collect lines
+	var buf bytes.Buffer
+	var line []byte
+	var isPrefix bool
+	var err error
 
-			// Skip empty string
-			if line = strings.TrimSpace(line); line == "" {
-				continue
+	for {
+		line, isPrefix, err = reader.ReadLine()
+		buf.Write(line)
+
+		// A line has been fully read
+		if !isPrefix {
+			line := strings.TrimSpace(buf.String())
+			buf.Reset()
+
+			if line == "" {
+				continue // Skip empty content
 			}
 
 			// Skip specific warning message
 			warnMsg := "WARNING: apt does not have a stable CLI interface. Use with caution in scripts."
 			if strings.EqualFold(line, warnMsg) {
-				//log.Warn().Msgf("Skipping specific warning message: %s", strconv.Quote(warnMsg))
 				continue
 			}
 
 			// Render output
 			renderOutput(line, level, tagFunc)
 		}
-	}
 
-	if err := scanner.Err(); err != nil {
-		if !errors.Is(err, os.ErrClosed) && !errors.Is(err, io.EOF) {
-			log.Error().Err(err).Msg("error streaming command output")
+		// Handle end of stream or other errors
+		if err != nil {
+			if !errors.Is(err, io.EOF) && !errors.Is(err, os.ErrClosed) {
+				log.Error().Err(err).Msg("error streaming command output")
+			}
+			break
 		}
 	}
 }
