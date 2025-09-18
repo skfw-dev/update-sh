@@ -13,6 +13,7 @@ A powerful command-line tool that simplifies system maintenance by managing upda
 
 - [x] **Cross-Platform Support**: Works on Linux and Windows
 - [x] **Package Manager Integration**:
+  - **Any**: Conda
   - **Linux**: APT, DNF, Pacman, Zypper, Snap, Flatpak
   - **Windows**: WinGet, Chocolatey, Scoop
 - [x] **Automatic Privilege Escalation**: Automatically requests admin/root privileges when needed
