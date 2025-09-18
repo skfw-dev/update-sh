@@ -120,7 +120,9 @@ func performLinuxPackageUpdates(dryRun bool, primaryPkgManager string) {
 	// Snap and Flatpak are universal Linux package managers (cross-distro),
 	// so always attempt to run their updates if their commands exist.
 	// Their implementations (e.g., `pkgmgr/snap_linux.go`) already have the `_linux.go` tag.
-	packageManagersToRun = append(packageManagersToRun, &pkgmgr.SnapManager{}, &pkgmgr.FlatpakManager{})
+	packageManagersToRun = append(packageManagersToRun, &pkgmgr.SnapManager{})
+	packageManagersToRun = append(packageManagersToRun, &pkgmgr.FlatpakManager{})
+	packageManagersToRun = append(packageManagersToRun, &pkgmgr.CondaManager{})
 
 	// Execute all collected package managers.
 	for _, packageManager := range packageManagersToRun {

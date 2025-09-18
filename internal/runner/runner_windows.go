@@ -4,13 +4,12 @@
 package runner
 
 import (
+	"bytes"
 	"fmt"
 	"os/exec"
-	"os/user" // Still needed for user.Current() if you want to get current user
+	"os/user"
 
 	"github.com/rs/zerolog/log"
-	// No need to import "update-sh/internal/config" here for GetTargetUser,
-	// as GetTargetUser is not applicable for Windows in this context.
 )
 
 // RunUserCommandWithOptions runs a command as a specific user on Windows.
@@ -68,4 +67,37 @@ func GetTargetUser() (string, error) {
 	}
 	log.Debug().Msg("GetTargetUser called on Windows. Returning current user as target.")
 	return currentUser.Username, nil
+}
+
+// RunUserCommandAndCaptureOutputWithOptions executes a command as a specific user and returns its standard output.
+// On Windows, this runs the command as the currently logged-in user.
+func RunUserCommandAndCaptureOutputWithOptions(opts *CommandOptions) (string, error) {
+	if opts.DryRun {
+		log.Info().Msgf("Dry Run: Would execute '%s' as user '%s': %s %v", opts.Description, opts.User, opts.Name, opts.Args)
+		return "", nil
+	}
+	log.Info().Msgf("Capturing output of '%s' as user '%s'...", opts.Description, opts.User)
+	cmd := exec.Command(opts.Name, opts.Args...)
+	if len(opts.Env) > 0 {
+		cmd.Env = append(cmd.Env, opts.Env...)
+	}
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to run command: %s", stderr.String())
+		return "", err
+	}
+	return stdout.String(), nil
+}
+
+// RunUserCommandAndCaptureOutput executes a command as a specific user and returns its standard output.
+// On Windows, this runs the command as the currently logged-in user.
+func RunUserCommandAndCaptureOutput(description string, user string, name string, env []string, arg ...string) (string, error) {
+	opts := NewCommandOptions(description, false, name, env, arg...)
+	opts.User = user
+	return RunUserCommandAndCaptureOutputWithOptions(opts)
 }

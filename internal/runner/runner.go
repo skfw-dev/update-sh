@@ -216,7 +216,7 @@ func renderOutput(content string, level func() *zerolog.Event, tagFunc func() st
 					continue
 				}
 
-				// FIXME: "- \r   \\ \r   | \r   / \r   - \r   \\ \r   | \r   / \r   - \r"
+				// FIXME: "- \r 	 \\ \r 	 | \r 	 / \r 	 - \r 	 \\ \r 	 | \r 	 / \r 	 - \r"
 
 				// Pass through with prefix
 				level().Msgf("%s %s", prefix, value)
@@ -238,4 +238,25 @@ func renderOutput(content string, level func() *zerolog.Event, tagFunc func() st
 func CommandExists(cmd string) bool {
 	_, err := exec.LookPath(cmd)
 	return err == nil
+}
+
+// RunCommandAndCaptureOutput executes a command and returns its standard output.
+// This is useful for commands whose output needs to be parsed by the calling function.
+func RunCommandAndCaptureOutput(description string, name string, env []string, arg ...string) (string, error) {
+	log.Info().Msgf("Capturing output of '%s'...", description)
+	cmd := exec.Command(name, arg...)
+	if len(env) > 0 {
+		cmd.Env = append(cmd.Env, env...)
+	}
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to run command: %s", stderr.String())
+		return "", err
+	}
+	return stdout.String(), nil
 }

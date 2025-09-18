@@ -98,6 +98,7 @@ func performWindowsPackageUpdates(dryRun bool) {
 	packageManagersToRun = append(packageManagersToRun, &pkgmgr.WinGetManager{})
 	packageManagersToRun = append(packageManagersToRun, &pkgmgr.ChocolateyManager{})
 	packageManagersToRun = append(packageManagersToRun, &pkgmgr.ScoopManager{})
+	packageManagersToRun = append(packageManagersToRun, &pkgmgr.CondaManager{})
 
 	// Execute all collected package managers.
 	for _, packageManager := range packageManagersToRun {

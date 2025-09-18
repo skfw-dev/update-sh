@@ -4,18 +4,19 @@
 package runner
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os/exec"
 	"os/user"
-
-	// Needed for potential syscall.Credential if you ever go that route
 
 	"github.com/rs/zerolog/log"
 
 	"update-sh/internal/config"
 )
 
+// RunUserCommandWithOptions runs a command as a specific user on Linux/Unix-like systems.
+// It typically uses 'sudo -u' to change user context.
 func RunUserCommandWithOptions(opts *CommandOptions) error {
 	if opts.DryRun {
 		log.Info().Msgf("Dry Run: Would execute '%s' as user '%s': %s %v", opts.Description, opts.User, opts.Name, opts.Args)
@@ -25,7 +26,7 @@ func RunUserCommandWithOptions(opts *CommandOptions) error {
 	log.Info().Msgf("%s (as user %s)...", opts.Description, opts.User)
 
 	// Construct the command to run via sudo -u
-	sudoArgs := []string{"-u", opts.Name}
+	sudoArgs := []string{"-u", opts.User, opts.Name}
 	sudoArgs = append(sudoArgs, opts.Args...)
 
 	// Build the command with sudo
@@ -75,4 +76,43 @@ func GetTargetUser() (string, error) {
 		return "", fmt.Errorf("no user found for ID %s: %w", userID, err)
 	}
 	return targetUser.Username, nil
+}
+
+// RunUserCommandAndCaptureOutputWithOptions executes a command as a specific user and returns its standard output.
+// On Linux, this is accomplished by using 'sudo -u'.
+func RunUserCommandAndCaptureOutputWithOptions(opts *CommandOptions) (string, error) {
+	if opts.DryRun {
+		log.Info().Msgf("Dry Run: Would execute '%s' as user '%s': %s %v", opts.Description, opts.User, opts.Name, opts.Args)
+		return "", nil
+	}
+	log.Info().Msgf("Capturing output of '%s' as user '%s'...", opts.Description, opts.User)
+
+	// Construct the command to run via sudo -u
+	sudoArgs := []string{"-u", opts.User, opts.Name}
+	sudoArgs = append(sudoArgs, opts.Args...)
+
+	// Build the command with sudo
+	cmd := exec.Command("sudo", sudoArgs...)
+	if len(opts.Env) > 0 {
+		cmd.Env = append(cmd.Env, opts.Env...)
+	}
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to run command: %s", stderr.String())
+		return "", err
+	}
+	return stdout.String(), nil
+}
+
+// RunUserCommandAndCaptureOutput executes a command as a specific user and returns its standard output.
+// On Linux, this is accomplished by using 'sudo -u'.
+func RunUserCommandAndCaptureOutput(description string, user string, name string, env []string, arg ...string) (string, error) {
+	opts := NewCommandOptions(description, false, name, env, arg...)
+	opts.User = user
+	return RunUserCommandAndCaptureOutputWithOptions(opts)
 }
