@@ -2,51 +2,85 @@ package pkgmgr
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"update-sh/internal/runner"
 
 	"github.com/rs/zerolog/log"
 )
 
-// CondaManager implements PackageManagerImpl for Conda on any platform.
-// This struct will handle updating and cleaning Conda environments in a non-interactive way.
-type CondaManager struct{}
+// This singleton variable holds the compiled regular expression.
+// Compiling a regex is a computationally expensive operation, so compiling it once at
+// package initialization and reusing it is a standard performance best practice.
+// The regex pattern is designed to capture the channel name from a line
+// formatted as "--add channels 'channel_name'".
+var channelRegex = regexp.MustCompile(`--add channels '([^']+)'`)
 
 // getExistingCondaChannels retrieves a list of channels currently configured in Conda.
-// It returns a map for efficient lookups.
-// This function assumes that the 'runner' package has a method to capture command output.
+// It returns a map for efficient lookups, where each key is a channel name.
+// This function relies on the 'conda config --get channels' command and
+// expects the output to be a list of `--add channels '...'` lines.
 func getExistingCondaChannels(user string) (map[string]bool, error) {
-	// The '--get channels' command prints the list of channels to stdout.
-	args := []string{"config", "--get", "channels"}
+	// We first construct the command to get existing channels, using the 'conda' executable
+	// and specifying the required subcommand and arguments.
+	cmdArgs := []string{"config", "--get", "channels"}
 
-	// Note: This requires a runner function that can capture command output.
-	// For example: output, err := runner.RunUserCommandAndCaptureOutput(...)
-	// We'll simulate this by assuming a successful command execution returns the channel list.
-	log.Debug().Msg("Checking for existing Conda channels.")
-	output, err := runner.RunUserCommandAndCaptureOutput("Get existing Conda channels", user, "conda", nil, args...)
+	// The command is executed using the provided `runner` interface to retrieve the
+	// channel list. This abstraction ensures the function remains portable across
+	// different operating systems.
+	log.Debug().Msg("Attempting to retrieve existing conda channels.")
+	output, err := runner.RunUserCommandAndCaptureOutput("Get existing conda channels", user, "conda", nil, cmdArgs...)
+
+	// If the command fails to execute, we log a detailed warning with the error and output.
+	// This helps diagnose common issues like Conda not being installed, a user's PATH
+	// not being correctly configured, or a permissions' error. A wrapped error is returned
+	// to the caller, preserving the original error details.
 	if err != nil {
-		log.Warn().Err(err).Msg("Could not retrieve existing Conda channels. Will attempt to add all required channels.")
-		return nil, err
+		log.Warn().Err(err).
+			Str("output", output).
+			Msgf("Failed to run 'conda config --get channels' for user '%s'. This might indicate that conda is not installed or a permissions issue.", user)
+		return nil, fmt.Errorf("could not retrieve conda channels: %w", err)
 	}
 
+	// The command output is parsed using our pre-compiled regular expression. This approach
+	// is not only performant but also robust, as it's designed to be resilient to minor
+	// formatting variations in the command's output.
+	matches := channelRegex.FindAllStringSubmatch(output, -1)
+
+	// A map is created to store the channel names for efficient lookups.
+	// We also check if no channels were found, which is a valid scenario if the Conda
+	// configuration is minimal.
 	channelsMap := make(map[string]bool)
-	// Conda's output for '--get channels' is a list of lines, so we parse it line by line.
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		trimmedLine := strings.TrimSpace(line)
-		// Check if the line contains the channel configuration syntax.
-		if strings.Contains(trimmedLine, "--add channels '") {
-			// Extract the channel name, which is enclosed in single quotes.
-			// The expected format is: --add channels 'channel_name'
-			parts := strings.Split(trimmedLine, "'")
-			if len(parts) >= 2 {
-				channelName := parts[1]
+	if len(matches) == 0 {
+		log.Info().Msg("No channels found in conda configuration. The list may be empty.")
+		return channelsMap, nil
+	}
+
+	// Each match is then iterated through to populate the map. We access the captured
+	// group at index 1 to get the channel name. A final validation check ensures the
+	// extracted name is not an empty string, logging a warning if an empty name is found
+	// to aid in debugging unusual output formats.
+	for _, match := range matches {
+		if len(match) > 1 {
+			channelName := strings.TrimSpace(match[1])
+			if channelName != "" {
 				channelsMap[channelName] = true
+			} else {
+				log.Warn().Msg("Detected an empty channel name in the conda configuration output.")
 			}
 		}
 	}
+
+	// Finally, a success message is logged, indicating the number of channels that were
+	// successfully retrieved.
+	log.Info().Msgf("Successfully retrieved %d existing conda channels.", len(channelsMap))
+
 	return channelsMap, nil
 }
+
+// CondaManager implements PackageManagerImpl for Conda on any platform.
+// This struct will handle updating and cleaning Conda environments in a non-interactive way.
+type CondaManager struct{}
 
 // Update performs package updates and cleanup using Conda.
 // It ensures required channels are present, updates all packages, and cleans the cache.
@@ -75,7 +109,7 @@ func (c *CondaManager) Update(dryRun bool) error {
 	}
 
 	// remove defaults channel to avoid conflicts with default channels in current conda installations
-	requiredChannels := []string{"conda-forge", "pytorch", "nvidia", "pypi"}
+	requiredChannels := []string{"defaults", "conda-canary", "conda-forge", "pytorch", "nvidia", "pypi"}
 	// requiredChannels := []string{"defaults", "conda-forge", "pytorch", "nvidia", "pypi"}
 	for _, channel := range requiredChannels {
 		if existingChannels != nil && existingChannels[channel] {
