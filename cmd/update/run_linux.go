@@ -155,6 +155,8 @@ func performMaintenance(dryRun, initCheckOnly, zshUpdateEnabled, pwshUpdateEnabl
 			PrimaryPackageManager: "unknown",
 		}
 	}
+
+	// Log distribution information
 	log.Info().Msgf("Detected OS: %s, Distribution ID: %s, IDLike: %s, Family: %s, Suggested Primary Package Manager: %s", runtime.GOOS, d.ID, d.IDLike, d.Family, d.PrimaryPackageManager)
 
 	// --- System Health Checks ---
