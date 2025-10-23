@@ -89,6 +89,9 @@ func (a *APTManager) checkPartiallyRemovedPackages(dryRun bool) {
 			log.Info().Msgf("  - %s", pkg)
 		}
 		log.Info().Msg("Consider running 'sudo apt autoremove --purge' if these are APT packages.")
+
+		// RUN: dpkg --get-selections | grep -i deinstall | awk '{print $1}' | xargs echo | xargs sudo apt remove --purge -y
+
 	} else {
 		log.Info().Msg("No partially deinstalled packages found.")
 	}
