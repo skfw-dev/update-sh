@@ -91,7 +91,16 @@ func toZapLevel(level log.Level) zapcore.Level {
 func toFields(fields []zapcore.Field) []log.Field {
 	result := make([]log.Field, len(fields))
 	for i, f := range fields {
-		if field := log.NewField(f.Key, f.Interface); field != nil {
+		var value any
+		switch {
+		case f.Integer > 0:
+			value = f.Integer
+		case len(f.String) > 0:
+			value = f.String
+		default:
+			value = f.Interface
+		}
+		if field := log.NewField(f.Key, value); field != nil {
 			result[i] = *field
 		}
 	}

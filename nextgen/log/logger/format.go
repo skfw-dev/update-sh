@@ -2,8 +2,10 @@ package logger
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
+	"update-sh/nextgen/cores/caseconv"
 	"update-sh/nextgen/log"
 )
 
@@ -21,6 +23,8 @@ func NewCustomFormatter() *CustomFormatter {
 
 // Format function
 func (s *CustomFormatter) Format(time time.Time, level log.Level, message string, fields log.Fields) string {
+	message = strings.Trim(message, "\r\n")
+
 	// Formatted time with time layout "<YYYY>/<MM>/<DD>T<HH>:<mm>:<ss>.<sss>Z"
 	formattedTime := time.UTC().Format("2006/01/02T15:04:05.000Z")
 
@@ -30,7 +34,17 @@ func (s *CustomFormatter) Format(time time.Time, level log.Level, message string
 	if len(fields) > 0 {
 		var b strings.Builder
 		for _, field := range fields {
-			b.WriteString(fmt.Sprintf(" %s=%v", field.Name, field.Value))
+			var value string
+			switch v := field.Value.(type) {
+			case string:
+				value = strconv.Quote(v)
+			case int64:
+				value = strconv.FormatInt(v, 10)
+			default:
+				value = fmt.Sprintf("%v", v)
+			}
+			key := caseconv.ToCamelCase(field.Name)
+			b.WriteString(fmt.Sprintf(" %s=%v", key, value))
 		}
 
 		if len(message) > 0 {
