@@ -1,59 +1,94 @@
 package logger
 
 import (
+	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
-	"update-sh/nextgen/cores/caseconv"
 	"update-sh/nextgen/log"
 )
 
+type FormatEncoderKind string
+
+const (
+	JSONFormatEncoder FormatEncoderKind = "json"
+	TextFormatEncoder FormatEncoderKind = "text"
+)
+
+type FormatEntry struct {
+	Time    time.Time      `json:"time"`
+	Level   string         `json:"level"`
+	Message string         `json:"message"`
+	Fields  map[string]any `json:"fields"`
+}
+
 type Formatter interface {
+	SetLogFmt(logFmt bool)
+	SetFormatEncoder(formatEncode FormatEncoderKind)
+	SetEncodeTimeLayout(encodeTimeLayout string)
 	Format(time time.Time, level log.Level, message string, fields log.Fields) string
 }
 
 type CustomFormatter struct {
 	Formatter
+	logFmt           bool
+	formatEncode     FormatEncoderKind
+	encodeTimeLayout string
 }
 
 func NewCustomFormatter() *CustomFormatter {
-	return &CustomFormatter{}
+	return &CustomFormatter{
+		logFmt:           true,
+		formatEncode:     TextFormatEncoder,
+		encodeTimeLayout: "2006-01-02T15:04:05.999Z07:00",
+	}
+}
+
+func (s *CustomFormatter) SetLogFmt(logFmt bool) {
+	s.logFmt = logFmt
+}
+
+func (s *CustomFormatter) SetFormatEncoder(formatEncode FormatEncoderKind) {
+	s.formatEncode = formatEncode
+}
+
+func (s *CustomFormatter) SetEncodeTimeLayout(encodeTimeLayout string) {
+	s.encodeTimeLayout = encodeTimeLayout
+}
+
+func (s *CustomFormatter) formatJSON(t time.Time, level log.Level, message string, fields log.Fields) string {
+	levelString := level.String()
+	cleanedMessage := strings.Trim(message, "\r\n")
+	mapFields := fields.ToMap()
+
+	data := &FormatEntry{
+		Time:    t.UTC(),
+		Level:   levelString,
+		Message: cleanedMessage,
+		Fields:  mapFields,
+	}
+
+	b, _ := json.Marshal(data)
+	return string(b)
+}
+
+func (s *CustomFormatter) formatString(t time.Time, level log.Level, message string, fields log.Fields) string {
+	formattedTime := t.UTC().Format(s.encodeTimeLayout)
+	levelString := level.String()
+	formattedMessage := formatLogMessageWithFields(s.logFmt, message, fields)
+	return fmt.Sprintf("[%s] [%s] %s", formattedTime, levelString, formattedMessage)
 }
 
 // Format function
-func (s *CustomFormatter) Format(time time.Time, level log.Level, message string, fields log.Fields) string {
-	message = strings.Trim(message, "\r\n")
+func (s *CustomFormatter) Format(t time.Time, level log.Level, message string, fields log.Fields) string {
+	switch s.formatEncode {
+	case JSONFormatEncoder:
+		return s.formatJSON(t, level, message, fields)
 
-	// Formatted time with time layout "<YYYY>/<MM>/<DD>T<HH>:<mm>:<ss>.<sss>Z"
-	formattedTime := time.UTC().Format("2006/01/02T15:04:05.000Z")
+	case TextFormatEncoder:
+		return s.formatString(t, level, message, fields)
 
-	// Convert level into string
-	levelString := level.String()
-
-	if len(fields) > 0 {
-		var b strings.Builder
-		for _, field := range fields {
-			var value string
-			switch v := field.Value.(type) {
-			case string:
-				value = strconv.Quote(v)
-			case int64:
-				value = strconv.FormatInt(v, 10)
-			default:
-				value = fmt.Sprintf("%v", v)
-			}
-			key := caseconv.ToCamelCase(field.Name)
-			b.WriteString(fmt.Sprintf(" %s=%v", key, value))
-		}
-
-		if len(message) > 0 {
-			return fmt.Sprintf("[%s] [%s] %s%s", formattedTime, levelString, message, b.String())
-		}
-
-		return fmt.Sprintf("[%s] [%s]%s", formattedTime, levelString, b.String())
+	default:
+		return s.formatString(t, level, message, fields)
 	}
-
-	// Combined formatted time, level string, and message
-	return fmt.Sprintf("[%s] [%s] %s", formattedTime, levelString, message)
 }

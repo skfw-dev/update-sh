@@ -8,10 +8,15 @@ import (
 
 func TestLogger(t *testing.T) {
 	config := logger.NewConfig(log.InfoLevel, log.ModeConsole, "", 0)
-	customLogger := logger.NewZapLogger(config)
+	formatter := config.Formatter
+	formatter.SetLogFmt(false)
+	formatter.SetFormatEncoder(logger.TextFormatEncoder)
+	customLogger := logger.NewLogger(config)
 
-	customLogger.
-		Field("Name", "John, Doe").
-		Field("Age", 20).
-		Printf("Test: %s\n\n", "Hello World!")
+	for i := 0; i < 10; i++ {
+		customLogger.
+			Field("Name", "John, Doe").
+			Field("Age", 20).
+			Print("This is message.")
+	}
 }

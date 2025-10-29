@@ -1,6 +1,8 @@
 package cores
 
 import (
+	"bytes"
+	"fmt"
 	"os"
 	"strings"
 )
@@ -38,4 +40,17 @@ func GetAppEnv() Env {
 	}
 
 	return Development
+}
+
+// EscapeBytes function escapes a byte slice into a string with hexadecimal escape sequences.
+func EscapeBytes(data []byte) string {
+	var buf bytes.Buffer
+	buf.WriteString(`"`)
+	for _, b := range data {
+		// Write each byte as a two-digit hex escape
+		digit := fmt.Sprintf(`\x%02x`, b)
+		buf.WriteString(digit)
+	}
+	buf.WriteString(`"`)
+	return buf.String()
 }

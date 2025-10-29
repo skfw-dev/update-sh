@@ -1,6 +1,9 @@
 package logger
 
 import (
+	"encoding/json"
+	"fmt"
+	"strconv"
 	"strings"
 	"update-sh/nextgen/cores"
 	"update-sh/nextgen/log"
@@ -15,7 +18,7 @@ type Level interface {
 
 // toLevel converts a level to a log.Level.
 func toLevel[T Level](level T) log.Level {
-	switch mod := any(level); v := mod.(type) {
+	switch v := any(level).(type) {
 	case log.Level:
 		return v
 	case zapcore.Level:
@@ -23,7 +26,7 @@ func toLevel[T Level](level T) log.Level {
 	case string:
 		return strToLevel(v)
 	default:
-		panic("invalid level type")
+		return log.InfoLevel
 	}
 }
 
@@ -43,7 +46,7 @@ func zapToLevel(level zapcore.Level) log.Level {
 	case zapcore.PanicLevel:
 		return log.PanicLevel
 	default:
-		panic("invalid level type")
+		return log.InfoLevel
 	}
 }
 
@@ -63,7 +66,7 @@ func strToLevel(level string) log.Level {
 	case "panic":
 		return log.PanicLevel
 	default:
-		panic("invalid level type")
+		return log.InfoLevel
 	}
 }
 
@@ -83,13 +86,13 @@ func toZapLevel(level log.Level) zapcore.Level {
 	case log.PanicLevel:
 		return zapcore.PanicLevel
 	default:
-		panic("invalid level type")
+		return zapcore.InfoLevel
 	}
 }
 
 // toFields converts the zap.Field slice to the custom log.Field slice.
-func toFields(fields []zapcore.Field) []log.Field {
-	result := make([]log.Field, len(fields))
+func toFields(fields []zapcore.Field) log.Fields {
+	result := make(log.Fields, len(fields))
 	for i, f := range fields {
 		var value any
 		switch {
@@ -109,13 +112,48 @@ func toFields(fields []zapcore.Field) []log.Field {
 }
 
 // toZapFields converts the custom log.Field slice to a zap.Field slice.
-func toZapFields(fields []log.Field) []zap.Field {
+func toZapFields(fields log.Fields) []zap.Field {
 	result := make([]zap.Field, len(fields))
 	for i, f := range fields {
-		result[i] = zap.Any(f.Name, f.Value)
+		result[i] = zap.Any(f.Key, f.Value)
 	}
 
 	return result
+}
+
+// formatLogMessageWithFields formats a message with fields into a single string.
+func formatLogMessageWithFields(logFmt bool, message string, fields log.Fields) string {
+	message = strings.Trim(message, "\r\n")
+	if len(fields) == 0 {
+		return message
+	}
+
+	if logFmt {
+		return fmt.Sprintf("message=%s %s", strconv.Quote(message), toFieldsString(fields))
+	}
+
+	return fmt.Sprintf("%s <fields>%s</fields>", message, toFieldsJSON(fields))
+	
+}
+
+// toFieldString converts a log.Field into a string representation.
+func toFieldString(field *log.Field) string {
+	return fmt.Sprintf("%s=%s", field.GetKey(), field.GetEscapeValue())
+}
+
+// toFieldsString converts a slice of log.Fields into a string representation.
+func toFieldsString(fields log.Fields) string {
+	result := make([]string, len(fields))
+	for i, field := range fields {
+		result[i] = toFieldString(&field)
+	}
+	return strings.Join(result, " ")
+}
+
+// toFieldsJSON converts a slice of log.Fields into a JSON-like string representation.
+func toFieldsJSON(fields log.Fields) string {
+	b, _ := json.Marshal(fields.ToMap())
+	return string(b)
 }
 
 // createCustomEncoderConfig creates a custom encoder configuration based on the provided configuration.
@@ -125,12 +163,10 @@ func createCustomEncoderConfig(config *Config) zapcore.EncoderConfig {
 		encoderConfig := zap.NewProductionEncoderConfig()
 		encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 		return encoderConfig
-
 	case cores.Development:
 		return zap.NewDevelopmentEncoderConfig()
-
 	default:
-		panic("invalid app env")
+		return zap.NewDevelopmentEncoderConfig()
 	}
 }
 

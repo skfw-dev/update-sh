@@ -18,8 +18,8 @@ type Logger struct {
 	fields    log.Fields
 }
 
-// NewZapLogger creates a new production-ready Zap logger
-func NewZapLogger(config *Config) *Logger {
+// NewLogger creates a new production-ready Zap logger
+func NewLogger(config *Config) *Logger {
 	zapLevel := toZapLevel(config.Level)
 
 	// Define Zap configuration for console and file outputs
@@ -83,7 +83,7 @@ func (s *Logger) WithContext(ctx context.Context) log.Logger {
 
 // Field returns a new logger with the added field (contextual logging)
 func (s *Logger) Field(name string, value any) log.Logger {
-	field := log.Field{Name: name, Value: value}
+	field := log.Field{Key: name, Value: value}
 	fields := append(s.fields, field)
 	logger := &Logger{
 		zapLogger: s.zapLogger,

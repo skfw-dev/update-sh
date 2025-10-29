@@ -1,6 +1,12 @@
 package log
 
-import "context"
+import (
+	"context"
+	"fmt"
+	"strconv"
+	"update-sh/nextgen/cores"
+	"update-sh/nextgen/cores/caseconv"
+)
 
 // Mode defines the desired output.
 type Mode int
@@ -42,18 +48,55 @@ func (s Level) String() string {
 }
 
 type Field struct {
-	Name  string
-	Value any
+	Key   string `json:"key"`
+	Value any    `json:"value"`
 }
 
 func NewField(name string, value any) *Field {
 	return &Field{
-		Name:  name,
+		Key:   name,
 		Value: value,
 	}
 }
 
+func (s *Field) GetKey() string {
+	return caseconv.ToCamelCase(s.Key)
+}
+
+func (s *Field) GetValue() any {
+	return s.Value
+}
+
+func (s *Field) GetEscapeValue() any {
+	switch v := s.Value.(type) {
+	case string:
+		return strconv.Quote(v)
+	case []byte:
+		return cores.EscapeBytes(v)
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+
+func (s *Field) ToMap() map[string]any {
+	return map[string]any{
+		s.Key: s.Value,
+	}
+}
+
 type Fields []Field
+
+func (s Fields) Count() int {
+	return len(s)
+}
+
+func (s Fields) ToMap() map[string]any {
+	result := make(map[string]any)
+	for _, field := range s {
+		result[(&field).GetKey()] = field.Value
+	}
+	return result
+}
 
 type Logger interface {
 	WithContext(ctx context.Context) Logger
