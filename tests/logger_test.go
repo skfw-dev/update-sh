@@ -9,7 +9,7 @@ import (
 func TestLogger(t *testing.T) {
 	config := logger.NewConfig(log.InfoLevel, log.ModeConsole, "", 0)
 	formatter := config.Formatter
-	formatter.SetLogFmt(false)
+	formatter.SetLogFmt(logger.XMLLogFmt)
 	formatter.SetFormatEncoder(logger.TextFormatEncoder)
 	customLogger := logger.NewLogger(config)
 

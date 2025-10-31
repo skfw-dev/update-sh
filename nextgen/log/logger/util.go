@@ -3,7 +3,6 @@ package logger
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"update-sh/nextgen/cores"
 	"update-sh/nextgen/log"
@@ -121,19 +120,34 @@ func toZapFields(fields log.Fields) []zap.Field {
 	return result
 }
 
-// formatLogMessageWithFields formats a message with fields into a single string.
-func formatLogMessageWithFields(logFmt bool, message string, fields log.Fields) string {
+// formatMessageByLogFmt formats a message with fields into a single string.
+func formatMessageByLogFmt(logFmt LogFmt, message string, fields log.Fields) string {
 	message = strings.Trim(message, "\r\n")
-	if len(fields) == 0 {
+
+	switch logFmt {
+	case TXTLogFmt:
+		var b strings.Builder
+		b.WriteString(message)
+		if len(fields) > 0 {
+			b.WriteString(" ")
+			b.WriteString(toFieldsString(fields))
+		}
+
+		return b.String()
+
+	case XMLLogFmt:
+		var b strings.Builder
+		b.WriteString(fmt.Sprintf("<message>%s</message>", message))
+		if len(fields) > 0 {
+			b.WriteString(" ")
+			b.WriteString(fmt.Sprintf("<data>%s</data>", toFieldsJSON(fields)))
+		}
+
+		return b.String()
+
+	default:
 		return message
 	}
-
-	if logFmt {
-		return fmt.Sprintf("message=%s %s", strconv.Quote(message), toFieldsString(fields))
-	}
-
-	return fmt.Sprintf("%s <fields>%s</fields>", message, toFieldsJSON(fields))
-	
 }
 
 // toFieldString converts a log.Field into a string representation.
