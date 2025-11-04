@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"update-sh/nextgen/log"
+	"update-sh/nextgen/log/common"
 
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -12,10 +12,10 @@ import (
 )
 
 type Logger struct {
-	log.Logger
+	common.Logger
 	zapLogger *zap.Logger
-	level     log.Level
-	fields    log.Fields
+	level     common.Level
+	fields    common.Fields
 }
 
 // NewLogger creates a new production-ready Zap logger
@@ -30,7 +30,7 @@ func NewLogger(config *Config) *Logger {
 	var cores []zapcore.Core
 
 	// Console Output
-	if config.Mode == log.ModeConsole || config.Mode == log.ModeBoth {
+	if config.Mode == common.ModeConsole || config.Mode == common.ModeBoth {
 		consoleWriter := zapcore.Lock(os.Stdout)
 		cores = append(cores, zapcore.NewCore(
 			consoleEncoder,
@@ -40,7 +40,7 @@ func NewLogger(config *Config) *Logger {
 	}
 
 	// File Output (using an io.WriteSyncer for Zap)
-	if config.Mode == log.ModeFileOnly || config.Mode == log.ModeBoth {
+	if config.Mode == common.ModeFileOnly || config.Mode == common.ModeBoth {
 		fileWriter, _ := os.OpenFile(config.Filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		cores = append(cores, zapcore.NewCore(
 			fileEncoder,
@@ -65,7 +65,7 @@ func NewLogger(config *Config) *Logger {
 }
 
 // WithContext returns a new Logger with the given context
-func (s *Logger) WithContext(ctx context.Context) log.Logger {
+func (s *Logger) WithContext(ctx context.Context) common.Logger {
 	span := trace.SpanFromContext(ctx)
 	if span.IsRecording() {
 		logger := &Logger{
@@ -82,8 +82,8 @@ func (s *Logger) WithContext(ctx context.Context) log.Logger {
 }
 
 // Field returns a new logger with the added field (contextual logging)
-func (s *Logger) Field(name string, value any) log.Logger {
-	field := log.Field{Key: name, Value: value}
+func (s *Logger) Field(name string, value any) common.Logger {
+	field := common.Field{Key: name, Value: value}
 	fields := append(s.fields, field)
 	logger := &Logger{
 		zapLogger: s.zapLogger,
@@ -95,7 +95,7 @@ func (s *Logger) Field(name string, value any) log.Logger {
 }
 
 // Fields returns a new logger with the added fields (contextual logging)
-func (s *Logger) Fields(fields ...log.Field) log.Logger {
+func (s *Logger) Fields(fields ...common.Field) common.Logger {
 	fields = append(s.fields, fields...)
 	logger := &Logger{
 		zapLogger: s.zapLogger,
@@ -106,7 +106,7 @@ func (s *Logger) Fields(fields ...log.Field) log.Logger {
 	return logger
 }
 
-func (s *Logger) Log(level log.Level, msg string, fields ...log.Field) log.Logger {
+func (s *Logger) Log(level common.Level, msg string, fields ...common.Field) common.Logger {
 	fields = append(s.fields, fields...)
 	zapLevel := toZapLevel(level)
 	zapFields := toZapFields(fields)
@@ -114,7 +114,7 @@ func (s *Logger) Log(level log.Level, msg string, fields ...log.Field) log.Logge
 	return s
 }
 
-func (s *Logger) Logf(level log.Level, format string, args ...any) log.Logger {
+func (s *Logger) Logf(level common.Level, format string, args ...any) common.Logger {
 	zapLevel := toZapLevel(level)
 	zapMsg := fmt.Sprintf(format, args...)
 	zapFields := toZapFields(s.fields)
@@ -123,7 +123,7 @@ func (s *Logger) Logf(level log.Level, format string, args ...any) log.Logger {
 }
 
 // Print map to Info level
-func (s *Logger) Print(msg string, fields ...log.Field) log.Logger {
+func (s *Logger) Print(msg string, fields ...common.Field) common.Logger {
 	fields = append(s.fields, fields...)
 	zapFields := toZapFields(fields)
 	s.zapLogger.Info(msg, zapFields...)
@@ -131,7 +131,7 @@ func (s *Logger) Print(msg string, fields ...log.Field) log.Logger {
 }
 
 // Printf map to Info level
-func (s *Logger) Printf(format string, args ...any) log.Logger {
+func (s *Logger) Printf(format string, args ...any) common.Logger {
 	zapMsg := fmt.Sprintf(format, args...)
 	zapFields := toZapFields(s.fields)
 	s.zapLogger.Info(zapMsg, zapFields...)
@@ -139,7 +139,7 @@ func (s *Logger) Printf(format string, args ...any) log.Logger {
 }
 
 // Debug logs a message at Debug level
-func (s *Logger) Debug(msg string, fields ...log.Field) log.Logger {
+func (s *Logger) Debug(msg string, fields ...common.Field) common.Logger {
 	fields = append(s.fields, fields...)
 	zapFields := toZapFields(fields)
 	s.zapLogger.Debug(msg, zapFields...)
@@ -147,7 +147,7 @@ func (s *Logger) Debug(msg string, fields ...log.Field) log.Logger {
 }
 
 // Debugf logs a message at Debug level
-func (s *Logger) Debugf(format string, args ...any) log.Logger {
+func (s *Logger) Debugf(format string, args ...any) common.Logger {
 	zapMsg := fmt.Sprintf(format, args...)
 	zapFields := toZapFields(s.fields)
 	s.zapLogger.Debug(zapMsg, zapFields...)
@@ -155,7 +155,7 @@ func (s *Logger) Debugf(format string, args ...any) log.Logger {
 }
 
 // Info logs a message at Info level
-func (s *Logger) Info(msg string, fields ...log.Field) log.Logger {
+func (s *Logger) Info(msg string, fields ...common.Field) common.Logger {
 	fields = append(s.fields, fields...)
 	zapFields := toZapFields(fields)
 	s.zapLogger.Info(msg, zapFields...)
@@ -163,7 +163,7 @@ func (s *Logger) Info(msg string, fields ...log.Field) log.Logger {
 }
 
 // Infof logs a message at Info level
-func (s *Logger) Infof(format string, args ...any) log.Logger {
+func (s *Logger) Infof(format string, args ...any) common.Logger {
 	zapMsg := fmt.Sprintf(format, args...)
 	zapFields := toZapFields(s.fields)
 	s.zapLogger.Info(zapMsg, zapFields...)
@@ -171,7 +171,7 @@ func (s *Logger) Infof(format string, args ...any) log.Logger {
 }
 
 // Warn logs a message at Warn level
-func (s *Logger) Warn(msg string, fields ...log.Field) log.Logger {
+func (s *Logger) Warn(msg string, fields ...common.Field) common.Logger {
 	fields = append(s.fields, fields...)
 	zapFields := toZapFields(fields)
 	s.zapLogger.Warn(msg, zapFields...)
@@ -179,7 +179,7 @@ func (s *Logger) Warn(msg string, fields ...log.Field) log.Logger {
 }
 
 // Warnf logs a message at Warn level
-func (s *Logger) Warnf(format string, args ...any) log.Logger {
+func (s *Logger) Warnf(format string, args ...any) common.Logger {
 	zapMsg := fmt.Sprintf(format, args...)
 	zapFields := toZapFields(s.fields)
 	s.zapLogger.Warn(zapMsg, zapFields...)
@@ -187,7 +187,7 @@ func (s *Logger) Warnf(format string, args ...any) log.Logger {
 }
 
 // Error logs a message at Error level
-func (s *Logger) Error(msg string, fields ...log.Field) log.Logger {
+func (s *Logger) Error(msg string, fields ...common.Field) common.Logger {
 	fields = append(s.fields, fields...)
 	zapFields := toZapFields(fields)
 	s.zapLogger.Error(msg, zapFields...)
@@ -195,7 +195,7 @@ func (s *Logger) Error(msg string, fields ...log.Field) log.Logger {
 }
 
 // Errorf logs a message at Error level
-func (s *Logger) Errorf(format string, args ...any) log.Logger {
+func (s *Logger) Errorf(format string, args ...any) common.Logger {
 	zapMsg := fmt.Sprintf(format, args...)
 	zapFields := toZapFields(s.fields)
 	s.zapLogger.Error(zapMsg, zapFields...)
@@ -203,7 +203,7 @@ func (s *Logger) Errorf(format string, args ...any) log.Logger {
 }
 
 // Fatal logs a message at Fatal level
-func (s *Logger) Fatal(msg string, fields ...log.Field) log.Logger {
+func (s *Logger) Fatal(msg string, fields ...common.Field) common.Logger {
 	fields = append(s.fields, fields...)
 	zapFields := toZapFields(fields)
 	s.zapLogger.Fatal(msg, zapFields...)
@@ -211,7 +211,7 @@ func (s *Logger) Fatal(msg string, fields ...log.Field) log.Logger {
 }
 
 // Fatalf logs a message at Fatal level
-func (s *Logger) Fatalf(format string, args ...any) log.Logger {
+func (s *Logger) Fatalf(format string, args ...any) common.Logger {
 	zapMsg := fmt.Sprintf(format, args...)
 	zapFields := toZapFields(s.fields)
 	s.zapLogger.Fatal(zapMsg, zapFields...)
@@ -219,7 +219,7 @@ func (s *Logger) Fatalf(format string, args ...any) log.Logger {
 }
 
 // Panic logs a message at Panic level and then panics
-func (s *Logger) Panic(msg string, fields ...log.Field) log.Logger {
+func (s *Logger) Panic(msg string, fields ...common.Field) common.Logger {
 	fields = append(s.fields, fields...)
 	zapFields := toZapFields(fields)
 	s.zapLogger.Panic(msg, zapFields...)
@@ -227,7 +227,7 @@ func (s *Logger) Panic(msg string, fields ...log.Field) log.Logger {
 }
 
 // Panicf logs a message at Panic level and then panics
-func (s *Logger) Panicf(format string, args ...any) log.Logger {
+func (s *Logger) Panicf(format string, args ...any) common.Logger {
 	zapMsg := fmt.Sprintf(format, args...)
 	zapFields := toZapFields(s.fields)
 	s.zapLogger.Panic(zapMsg, zapFields...)

@@ -3,86 +3,87 @@ package logger
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"update-sh/nextgen/cores"
-	"update-sh/nextgen/log"
+	"update-sh/nextgen/log/common"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 type Level interface {
-	log.Level | zapcore.Level | string
+	common.Level | zapcore.Level | string
 }
 
 // toLevel converts a level to a log.Level.
-func toLevel[T Level](level T) log.Level {
+func toLevel[T Level](level T) common.Level {
 	switch v := any(level).(type) {
-	case log.Level:
+	case common.Level:
 		return v
 	case zapcore.Level:
 		return zapToLevel(v)
 	case string:
 		return strToLevel(v)
 	default:
-		return log.InfoLevel
+		return common.InfoLevel
 	}
 }
 
 // zapToLevel converts a zapcore.Level to a log.Level.
-func zapToLevel(level zapcore.Level) log.Level {
+func zapToLevel(level zapcore.Level) common.Level {
 	switch level {
 	case zapcore.DebugLevel:
-		return log.DebugLevel
+		return common.DebugLevel
 	case zapcore.InfoLevel:
-		return log.InfoLevel
+		return common.InfoLevel
 	case zapcore.WarnLevel:
-		return log.WarnLevel
+		return common.WarnLevel
 	case zapcore.ErrorLevel:
-		return log.ErrorLevel
+		return common.ErrorLevel
 	case zapcore.FatalLevel:
-		return log.FatalLevel
+		return common.FatalLevel
 	case zapcore.PanicLevel:
-		return log.PanicLevel
+		return common.PanicLevel
 	default:
-		return log.InfoLevel
+		return common.InfoLevel
 	}
 }
 
 // strToLevel converts a string to a log.Level.
-func strToLevel(level string) log.Level {
+func strToLevel(level string) common.Level {
 	switch strings.ToLower(strings.TrimSpace(level)) {
 	case "debug", "debugging":
-		return log.DebugLevel
+		return common.DebugLevel
 	case "info", "information":
-		return log.InfoLevel
+		return common.InfoLevel
 	case "warn", "warning":
-		return log.WarnLevel
+		return common.WarnLevel
 	case "error":
-		return log.ErrorLevel
+		return common.ErrorLevel
 	case "fatal":
-		return log.FatalLevel
+		return common.FatalLevel
 	case "panic":
-		return log.PanicLevel
+		return common.PanicLevel
 	default:
-		return log.InfoLevel
+		return common.InfoLevel
 	}
 }
 
 // toZapLevel converts the custom log.Level to a zapcore.Level.
-func toZapLevel(level log.Level) zapcore.Level {
+func toZapLevel(level common.Level) zapcore.Level {
 	switch level {
-	case log.DebugLevel:
+	case common.DebugLevel:
 		return zapcore.DebugLevel
-	case log.InfoLevel:
+	case common.InfoLevel:
 		return zapcore.InfoLevel
-	case log.WarnLevel:
+	case common.WarnLevel:
 		return zapcore.WarnLevel
-	case log.ErrorLevel:
+	case common.ErrorLevel:
 		return zapcore.ErrorLevel
-	case log.FatalLevel:
+	case common.FatalLevel:
 		return zapcore.FatalLevel
-	case log.PanicLevel:
+	case common.PanicLevel:
 		return zapcore.PanicLevel
 	default:
 		return zapcore.InfoLevel
@@ -90,8 +91,8 @@ func toZapLevel(level log.Level) zapcore.Level {
 }
 
 // toFields converts the zap.Field slice to the custom log.Field slice.
-func toFields(fields []zapcore.Field) log.Fields {
-	result := make(log.Fields, len(fields))
+func toFields(fields []zapcore.Field) common.Fields {
+	result := make(common.Fields, len(fields))
 	for i, f := range fields {
 		var value any
 		switch {
@@ -102,7 +103,7 @@ func toFields(fields []zapcore.Field) log.Fields {
 		default:
 			value = f.Interface
 		}
-		if field := log.NewField(f.Key, value); field != nil {
+		if field := common.NewField(f.Key, value); field != nil {
 			result[i] = *field
 		}
 	}
@@ -111,7 +112,7 @@ func toFields(fields []zapcore.Field) log.Fields {
 }
 
 // toZapFields converts the custom log.Field slice to a zap.Field slice.
-func toZapFields(fields log.Fields) []zap.Field {
+func toZapFields(fields common.Fields) []zap.Field {
 	result := make([]zap.Field, len(fields))
 	for i, f := range fields {
 		result[i] = zap.Any(f.Key, f.Value)
@@ -120,11 +121,11 @@ func toZapFields(fields log.Fields) []zap.Field {
 	return result
 }
 
-// formatMessageByLogFmt formats a message with fields into a single string.
-func formatMessageByLogFmt(logFmt LogFmt, message string, fields log.Fields) string {
+// formatMessageByTextMode formats a message with fields into a single string.
+func formatMessageByTextMode(textMode TextMode, message string, fields common.Fields) string {
 	message = strings.Trim(message, "\r\n")
 
-	switch logFmt {
+	switch textMode {
 	case TXTLogFmt:
 		var b strings.Builder
 		b.WriteString(message)
@@ -151,12 +152,12 @@ func formatMessageByLogFmt(logFmt LogFmt, message string, fields log.Fields) str
 }
 
 // toFieldString converts a log.Field into a string representation.
-func toFieldString(field *log.Field) string {
-	return fmt.Sprintf("%s=%s", field.GetKey(), field.GetEscapeValue())
+func toFieldString(field *common.Field) string {
+	return fmt.Sprintf("%s=%s", field.GetKey(), strconv.Quote(field.ToString()))
 }
 
 // toFieldsString converts a slice of log.Fields into a string representation.
-func toFieldsString(fields log.Fields) string {
+func toFieldsString(fields common.Fields) string {
 	result := make([]string, len(fields))
 	for i, field := range fields {
 		result[i] = toFieldString(&field)
@@ -165,7 +166,7 @@ func toFieldsString(fields log.Fields) string {
 }
 
 // toFieldsJSON converts a slice of log.Fields into a JSON-like string representation.
-func toFieldsJSON(fields log.Fields) string {
+func toFieldsJSON(fields common.Fields) string {
 	b, _ := json.Marshal(fields.ToMap())
 	return string(b)
 }

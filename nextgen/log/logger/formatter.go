@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	"update-sh/nextgen/log"
+	"update-sh/nextgen/log/common"
 )
 
-type LogFmt string
+type TextMode string
 
 const (
-	TXTLogFmt LogFmt = "txt"
-	XMLLogFmt LogFmt = "xml"
+	TXTLogFmt TextMode = "txt"
+	XMLLogFmt TextMode = "xml"
 )
 
 type FormatEncoderKind string
@@ -31,29 +31,29 @@ type FormatEntry struct {
 }
 
 type Formatter interface {
-	SetLogFmt(logFmt LogFmt)
+	SetTextMode(textMode TextMode)
 	SetFormatEncoder(formatEncode FormatEncoderKind)
 	SetEncodeTimeLayout(encodeTimeLayout string)
-	Format(time time.Time, level log.Level, message string, fields log.Fields) string
+	Format(time time.Time, level common.Level, message string, fields common.Fields) string
 }
 
 type CustomFormatter struct {
 	Formatter
-	logFmt           LogFmt
+	textMode         TextMode
 	formatEncode     FormatEncoderKind
 	encodeTimeLayout string
 }
 
 func NewCustomFormatter() *CustomFormatter {
 	return &CustomFormatter{
-		logFmt:           TXTLogFmt,
+		textMode:         TXTLogFmt,
 		formatEncode:     TextFormatEncoder,
 		encodeTimeLayout: "2006-01-02T15:04:05.000Z07:00",
 	}
 }
 
-func (s *CustomFormatter) SetLogFmt(logFmt LogFmt) {
-	s.logFmt = logFmt
+func (s *CustomFormatter) SetTextMode(textMode TextMode) {
+	s.textMode = textMode
 }
 
 func (s *CustomFormatter) SetFormatEncoder(formatEncode FormatEncoderKind) {
@@ -64,13 +64,13 @@ func (s *CustomFormatter) SetEncodeTimeLayout(encodeTimeLayout string) {
 	s.encodeTimeLayout = encodeTimeLayout
 }
 
-func (s *CustomFormatter) formatString(t time.Time, level log.Level, message string, fields log.Fields) string {
+func (s *CustomFormatter) formatString(t time.Time, level common.Level, message string, fields common.Fields) string {
 	formattedTime := t.UTC().Format(s.encodeTimeLayout)
-	formattedMessage := formatMessageByLogFmt(s.logFmt, message, fields)
+	formattedMessage := formatMessageByTextMode(s.textMode, message, fields)
 	return fmt.Sprintf("[%s] [%s] %s", formattedTime, level.String(), formattedMessage)
 }
 
-func (s *CustomFormatter) formatJSON(t time.Time, level log.Level, message string, fields log.Fields) string {
+func (s *CustomFormatter) formatJSON(t time.Time, level common.Level, message string, fields common.Fields) string {
 	cleanedMessage := strings.Trim(message, "\r\n")
 
 	data := &FormatEntry{
@@ -84,7 +84,7 @@ func (s *CustomFormatter) formatJSON(t time.Time, level log.Level, message strin
 	return string(b)
 }
 
-func (s *CustomFormatter) formatXML(t time.Time, level log.Level, message string, fields log.Fields) string {
+func (s *CustomFormatter) formatXML(t time.Time, level common.Level, message string, fields common.Fields) string {
 	formattedTime := t.UTC().Format(s.encodeTimeLayout)
 	cleanedMessage := strings.Trim(message, "\r\n")
 
@@ -97,7 +97,7 @@ func (s *CustomFormatter) formatXML(t time.Time, level log.Level, message string
 }
 
 // Format function
-func (s *CustomFormatter) Format(t time.Time, level log.Level, message string, fields log.Fields) string {
+func (s *CustomFormatter) Format(t time.Time, level common.Level, message string, fields common.Fields) string {
 	switch s.formatEncode {
 	case TextFormatEncoder:
 		return s.formatString(t, level, message, fields)
