@@ -159,8 +159,8 @@ func toFieldString(field *common.Field) string {
 // toFieldsString converts a slice of log.Fields into a string representation.
 func toFieldsString(fields common.Fields) string {
 	result := make([]string, len(fields))
-	for i, field := range fields {
-		result[i] = toFieldString(&field)
+	for i := range fields {
+		result[i] = toFieldString(&fields[i])
 	}
 	return strings.Join(result, " ")
 }

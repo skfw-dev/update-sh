@@ -5,6 +5,9 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// Create a buffer pool instance
+var pool = buffer.NewPool()
+
 // CustomConsoleEncoder uses the provided Formatter interface to render logs.
 type CustomConsoleEncoder struct {
 	zapcore.Encoder
@@ -21,10 +24,17 @@ func NewCustomConsoleEncoder(formatter Formatter, encoderConfig zapcore.EncoderC
 }
 
 func (s *CustomConsoleEncoder) EncodeEntry(entry zapcore.Entry, fields []zapcore.Field) (*buffer.Buffer, error) {
-	buff := buffer.NewPool().Get()
+	buff := pool.Get()
+
+	time := entry.Time
+	name := entry.LoggerName
+	level := toLevel(entry.Level)
+	caller := entry.Caller.String()
+	message := entry.Message
+	stack := entry.Stack
 
 	// Call the user-provided Formatter method
-	output := s.formatter.Format(entry.Time, toLevel(entry.Level), entry.Message, toFields(fields))
+	output := s.formatter.Format(time, name, level, caller, message, stack, toFields(fields))
 
 	// Append string
 	buff.AppendString(output)

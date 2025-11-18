@@ -49,15 +49,23 @@ func NewLogger(config *Config) *Logger {
 		))
 	}
 
+	// Calculate the caller skip
+	callerSkip := config.CallerSkip + 1
+
 	// Combine cores into a single Zap logger
 	core := zapcore.NewTee(cores...)
+	opts := []zap.Option{
+		zap.AddCaller(),
+		zap.AddCallerSkip(callerSkip),
+		zap.AddStacktrace(zapcore.ErrorLevel),
+	}
 
 	// Skip 1 to point to the caller of the wrapper
-	zapLogger := zap.New(core, zap.AddCallerSkip(config.CallerSkip+1))
+	zapLogger := zap.New(core, opts...)
 
 	// Create a new Logger instance
 	logger := &Logger{
-		zapLogger: zapLogger,
+		zapLogger: zapLogger.Named("Logger"),
 		level:     config.Level,
 	}
 
